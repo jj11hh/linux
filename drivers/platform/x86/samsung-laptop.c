@@ -365,6 +365,7 @@ struct samsung_quirks {
 	bool enable_kbd_backlight;
 	bool use_native_backlight;
 	bool lid_handling;
+	bool has_good_efi; //Interesting, has a good efi is a quirk, LOL
 };
 
 static struct samsung_quirks samsung_unknown = {};
@@ -385,6 +386,12 @@ static struct samsung_quirks samsung_np740u3e = {
 static struct samsung_quirks samsung_lid_handling = {
 	.lid_handling = true,
 };
+
+static struct samsung_quirks samsung_np940x5n = {
+	.four_kbd_backlight_levels = true,
+	.has_good_efi = true
+};
+
 
 static bool force;
 module_param(force, bool, 0);
@@ -1681,6 +1688,24 @@ static const struct dmi_system_id samsung_dmi_table[] __initconst = {
 		},
 	 .driver_data = &samsung_lid_handling,
 	},
+	{
+	 .callback = samsung_dmi_matched,
+	 .ident = "940X5N",
+	 .matches = {
+		DMI_MATCH(DMI_SYS_VENDOR, "SAMSUNG ELECTRONICS CO., LTD."),
+		DMI_MATCH(DMI_PRODUCT_NAME, "940X5N"),
+		},
+	 .driver_data = &samsung_np940x5n,
+	},
+	{
+	 .callback = samsung_dmi_matched,
+	 .ident = "940X5M",
+	 .matches = {
+		DMI_MATCH(DMI_SYS_VENDOR, "SAMSUNG ELECTRONICS CO., LTD."),
+		DMI_MATCH(DMI_PRODUCT_NAME, "940X5M"),
+		},
+	 .driver_data = &samsung_np940x5n,
+	},
 	{ },
 };
 MODULE_DEVICE_TABLE(dmi, samsung_dmi_table);
@@ -1692,11 +1717,11 @@ static int __init samsung_init(void)
 	struct samsung_laptop *samsung;
 	int ret;
 
-	if (efi_enabled(EFI_BOOT))
-		return -ENODEV;
-
 	quirks = &samsung_unknown;
 	if (!force && !dmi_check_system(samsung_dmi_table))
+		return -ENODEV;
+	
+	if ((!quirks->has_good_efi) && efi_enabled(EFI_BOOT))
 		return -ENODEV;
 
 	samsung = kzalloc(sizeof(*samsung), GFP_KERNEL);
